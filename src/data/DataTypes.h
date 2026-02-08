@@ -4,6 +4,7 @@
 struct LogData {
   unsigned long timestamp;
   float leanAngle;
+  float pitchAngle;
   float speedKmh;
   float tireTempL;
   float tireTempR;
@@ -19,6 +20,7 @@ struct LogData {
 struct MaxValues {
   float maxLeanLeft;
   float maxLeanRight;
+  float maxPitch;
   float maxSpeed;
   float maxTireTempL;
   float maxTireTempR;
@@ -26,7 +28,7 @@ struct MaxValues {
   unsigned long lastMaxUpdate;
   
   MaxValues() : 
-    maxLeanLeft(0), maxLeanRight(0), maxSpeed(0), 
+    maxLeanLeft(0), maxLeanRight(0), maxPitch(0), maxSpeed(0), 
     maxTireTempL(0), maxTireTempR(0), maxEngineTemp(0),
     lastMaxUpdate(0) {}
 };

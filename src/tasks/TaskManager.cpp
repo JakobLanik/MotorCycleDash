@@ -212,19 +212,35 @@ void TaskManager::taskEngine(void* params) {
 void TaskManager::taskIMU(void* params) {
     Serial.println("IMU Task started");
     while (1) {
-        if (globalImuSensor && globalDisplayManager) {
-            // Read IMU data (adjust method names)
-             float leanAngle = globalImuSensor->calculateRollAngle();
+        // Wir brauchen hier zusätzlich globalDataLogger!
+        if (globalImuSensor && globalDisplayManager && globalDataLogger) {
             
+            float leanAngle = globalImuSensor->calculateRollAngle();
+            float pitchAngle = globalImuSensor->calculatePitchAngle();
+
             if (!isnan(leanAngle)) {
-                // Send to display
+                // 1. Display aktualisieren
                 globalDisplayManager->setLeanAngle(leanAngle);
                 
-                // Send to queue
+                // 2. WICHTIG: Logger füttern!
+                globalDataLogger->setLeanAngle(leanAngle);
+                
+                // 3. UI Queue
                 UiMsg msg;
                 msg.type = UiMsg::UPDATE_LEAN;
                 msg.value = leanAngle;
                 globalDisplayManager->sendToQueue(msg);
+            }
+
+            if (!isnan(pitchAngle)) {
+                // 4. Logger füttern! (Diese Methode musst du in DataLogger.h haben)
+                globalDataLogger->setPitchAngle(pitchAngle);
+
+                // 5. UI Queue für Pitch
+                UiMsg msgP;
+                msgP.type = UiMsg::UPDATE_PITCH;
+                msgP.value = pitchAngle;
+                globalDisplayManager->sendToQueue(msgP);
             }
         }
         vTaskDelay(pdMS_TO_TICKS(IMU_UPDATE_INTERVAL));

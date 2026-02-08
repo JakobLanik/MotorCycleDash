@@ -51,6 +51,18 @@ float ADXL345Sensor::calculateRollAngle() {
     return rollZeroed;
 }
 
+float ADXL345Sensor::calculatePitchAngle() {
+    float x, y, z;
+    readAxes(x, y, z); // Holt alle aktuellen Beschleunigungswerte
+    
+    // Berechnet den Pitch basierend auf X und der Resultierenden aus Y/Z
+    float pitchDeg = calculatePitchDeg(x, y, z);
+    
+    // Falls du später ein Pitch-Offset (Kalibrierung) willst, 
+    // könntest du hier analog zu _rollOffset ein _pitchOffset abziehen.
+    return pitchDeg; 
+}
+
 void ADXL345Sensor::calibrate() {
     const uint32_t CAL_MS = 2000;
     uint32_t tStart = millis();
@@ -125,4 +137,17 @@ float ADXL345Sensor::calculateRollDeg(float ay, float az) {
     // Schützt vor Division durch Null (atan2 fängt das zwar ab, aber sicher ist sicher)
     if (abs(ay) < 0.001f && abs(az) < 0.001f) return 0.0f;
     return atan2f(ay, az) * 180.0f / M_PI;
+}
+
+float ADXL345Sensor::calculatePitchDeg(float ax, float ay, float az) {
+    // Die Resultierende Kraft in der Y-Z Ebene
+    float yz_resultant = sqrtf(ay * ay + az * az);
+    
+    // Schützt vor Division durch Null
+    if (abs(ax) < 0.001f && yz_resultant < 0.001f) return 0.0f;
+    
+    // atan2(-ax, Resultierende) gibt den Winkel zur Horizontalen
+    // Das Minus vor ax sorgt dafür, dass Bremsen (Verzögerung) 
+    // den Punkt im Display nach oben wandert lässt.
+    return atan2f(-ax, yz_resultant) * 180.0f / M_PI;
 }

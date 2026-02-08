@@ -12,6 +12,7 @@
 struct UiMsg {
     enum MsgType {
         UPDATE_LEAN,
+        UPDATE_PITCH,
         UPDATE_TIME,
         UPDATE_SPEED,
         UPDATE_INFO,
@@ -79,6 +80,7 @@ private:
     
     // Aktuelle Werte
     float _leanAngle = 0.0;
+    float _pitchAngle = 0.0;
     char _timeText[32] = "--:--";
     float _speed = 0.0;
     char _infoText[32] = "System Ready";

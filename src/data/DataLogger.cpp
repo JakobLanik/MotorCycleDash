@@ -34,7 +34,7 @@ void DataLogger::updateMaxValues() {
   
   // Update max lean (separate left/right)
   updateMaxLean(_currentData.leanAngle);
-  
+  updateMaxPitch(_currentData.pitchAngle);
   // Update max speed
   updateMaxSpeed(_currentData.speedKmh);
   
@@ -48,6 +48,10 @@ void DataLogger::updateMaxValues() {
 
 void DataLogger::setLeanAngle(float angle) {
   _currentData.leanAngle = angle;
+}
+
+void DataLogger::setPitchAngle(float angle) {
+  _currentData.pitchAngle = angle;
 }
 
 void DataLogger::setSpeedKmh(float speed) {
@@ -95,15 +99,16 @@ void DataLogger::resetMaxValues() {
 
 // Private methods
 void DataLogger::writeDataToSD() {
-  if (_sdManager && _sdManager->isPresent()) return;
+  if (!_sdManager || !_sdManager->isPresent()) return;
   
   char buffer[512];
   
-  // Write current data
+  // 12 Basis-Werte
   snprintf(buffer, sizeof(buffer),
-    "%lu,%.2f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.6f,%.6f,%d,",
+    "%lu,%.2f,%.2f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.6f,%.6f,%d,",
     _currentData.timestamp,
     _currentData.leanAngle,
+    _currentData.pitchAngle, // <--- Pitch hinzugefügt
     _currentData.speedKmh,
     _currentData.tireTempL,
     _currentData.tireTempR,
@@ -114,16 +119,16 @@ void DataLogger::writeDataToSD() {
     _currentData.longitude,
     _currentData.satellites);
   
-  // Write max values
+  // 7 Max-Werte
   char maxBuffer[128];
-  snprintf(maxBuffer, sizeof(maxBuffer),
-    "%.2f,%.2f,%.1f,%.1f,%.1f,%.1f\n",
+  snprintf(maxBuffer, sizeof(maxBuffer), "%.2f,%.2f,%.1f,%.1f,%.1f,%.1f,%.1f\n",
     _maxValues.maxLeanLeft,
     _maxValues.maxLeanRight,
     _maxValues.maxSpeed,
     _maxValues.maxTireTempL,
     _maxValues.maxTireTempR,
-    _maxValues.maxEngineTemp);
+    _maxValues.maxEngineTemp,
+    _maxValues.maxPitch); // <--- MaxPitch hinzugefügt
   
   strcat(buffer, maxBuffer);
   _sdManager->writeLogLine(buffer);
@@ -143,6 +148,16 @@ void DataLogger::updateMaxLean(float angle) {
       _maxValues.maxLeanRight = angle;
       _maxValues.lastMaxUpdate = now;
     }
+  }
+}
+
+void DataLogger::updateMaxPitch(float pitch) {
+  unsigned long now = millis();
+  float absPitch = fabsf(pitch);
+  
+  if (absPitch > fabsf(_maxValues.maxPitch)) {
+    _maxValues.maxPitch = pitch;
+    _maxValues.lastMaxUpdate = now;
   }
 }
 

@@ -15,6 +15,7 @@ public:
   
   // Setter für aktuelle Daten
   void setLeanAngle(float angle);
+  void setPitchAngle(float pitch);
   void setSpeedKmh(float speed);
   void setTireTempL(float temp);
   void setTireTempR(float temp);
@@ -38,6 +39,7 @@ private:
   
   void writeDataToSD();
   void updateMaxLean(float angle);
+  void updateMaxPitch(float pitch);
   void updateMaxSpeed(float speed);
   void updateMaxTireTempL(float temp);
   void updateMaxTireTempR(float temp);

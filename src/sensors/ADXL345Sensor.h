@@ -11,6 +11,7 @@ public:
     float readValue() override;
     bool isAvailable() override;
     float calculateRollAngle();
+    float calculatePitchAngle();
     
     // Diese Deklarationen müssen vorhanden sein:
     void calibrate(); 
@@ -29,6 +30,7 @@ private:
     // Diese beiden fehlten ebenfalls:
     void mapAxes(int16_t rx, int16_t ry, int16_t rz, float &ax, float &ay, float &az);
     float calculateRollDeg(float ay, float az);
+    float calculatePitchDeg(float ax, float ay, float az);
 };
 
 #endif

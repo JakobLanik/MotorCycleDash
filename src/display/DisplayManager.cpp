@@ -120,7 +120,7 @@ void DisplayManager::drawFrame() {
 }
 
 void DisplayManager::drawLeanCircle() {
-    // Clear area
+    // 1. Bereich löschen
     _tft->fillRect(_leanCircleArea.x, _leanCircleArea.y, 
                    _leanCircleArea.width, _leanCircleArea.height, ST77XX_BLACK);
     
@@ -128,56 +128,48 @@ void DisplayManager::drawLeanCircle() {
     int16_t cy = _leanCircleArea.y + _leanCircleArea.height / 2;
     int16_t radius = i16min(_leanCircleArea.width, _leanCircleArea.height) / 2 - 10;
     
-    // Draw outer circles (wie im alten Code)
+    // 2. Äußere Ringe
     _tft->drawCircle(cx, cy, radius, ST77XX_WHITE);
     _tft->drawCircle(cx, cy, radius - 1, _tft->color565(80, 80, 80));
-    _tft->drawCircle(cx, cy, radius - 2, _tft->color565(40, 40, 40));
     
-    // Draw center crosshair
+    // 3. Fadenkreuz & Zentrum
     _tft->drawFastHLine(cx - 8, cy, 16, _tft->color565(60, 60, 60));
     _tft->drawFastVLine(cx, cy - 8, 16, _tft->color565(60, 60, 60));
-    
-    // Draw center dot
     _tft->fillCircle(cx, cy, 2, ST77XX_WHITE);
     
-    // Draw lean indicator (ball)
-    float normalizedLean = constrain(_leanAngle / 45.0f, -1.0f, 1.0f);
-    int16_t ballX = cx + (int16_t)(normalizedLean * radius * 0.8f);
+    // 4. BERECHNUNG PITCH & LEAN (Der Ball)
+    // X-Achse: Lean (-45 bis 45 Grad)
+    float normLean = constrain(_leanAngle / 45.0f, -1.0f, 1.0f);
+    int16_t ballX = cx + (int16_t)(normLean * radius * 0.8f);
+
+    // Y-Achse: Pitch (-30 bis 30 Grad für Bremsen/Beschleunigen)
+    float normPitch = constrain(_pitchAngle / 30.0f, -1.0f, 1.0f);
+    int16_t ballY = cy - (int16_t)(normPitch * radius * 0.8f);
     
-    // Draw track line
-    _tft->drawFastHLine(cx - radius, cy, radius * 2, _tft->color565(40, 40, 40));
-    
-    // Draw ball with color based on lean angle
+    // 5. Ball Farbe bestimmen (basiert auf Lean)
     uint16_t ballColor;
     float absLean = fabsf(_leanAngle);
     if (absLean < 15) ballColor = ST77XX_GREEN;
     else if (absLean < 30) ballColor = ST77XX_YELLOW;
     else ballColor = ST77XX_RED;
     
-    _tft->fillCircle(ballX, cy, 8, ballColor);
-    _tft->drawCircle(ballX, cy, 8, ST77XX_WHITE);
+    // 6. Ball zeichnen
+    _tft->fillCircle(ballX, ballY, 6, ballColor);
+    _tft->drawCircle(ballX, ballY, 6, ST77XX_WHITE);
     
-    // Draw "LEAN" label at top
-    _tft->setTextColor(ST77XX_CYAN, ST77XX_BLACK);
+    // 7. Text Labels
+    _tft->setTextColor(ST77XX_CYAN);
     _tft->setTextSize(1);
-    _tft->setCursor(cx - 12, _leanCircleArea.y + 4);
-    _tft->print("LEAN");
-    
-    // Draw lean angle value
-    char leanStr[16];
-    if (_leanAngle < 0) {
-        snprintf(leanStr, sizeof(leanStr), "L %.0f°", -_leanAngle);
-    } else if (_leanAngle > 0) {
-        snprintf(leanStr, sizeof(leanStr), "R %.0f°", _leanAngle);
-    } else {
-        snprintf(leanStr, sizeof(leanStr), "0°");
-    }
-    
-    _tft->setTextColor(ST77XX_WHITE, ST77XX_BLACK);
-    _tft->setTextSize(2);
-    int16_t textWidth = strlen(leanStr) * 12;
-    _tft->setCursor(cx - textWidth / 2, cy + 20);
-    _tft->print(leanStr);
+    _tft->setCursor(cx - 12, _leanCircleArea.y + 2);
+    _tft->print("ATTIT");
+
+    char angleStr[16];
+    snprintf(angleStr, sizeof(angleStr), "L%.0f P%.0f", _leanAngle, _pitchAngle);
+    _tft->setTextColor(ST77XX_WHITE);
+    _tft->setTextSize(1);
+    int16_t tw = strlen(angleStr) * 6;
+    _tft->setCursor(cx - tw / 2, cy + radius + 2);
+    _tft->print(angleStr);
 }
 
 void DisplayManager::drawTimeBox() {
@@ -369,6 +361,10 @@ void DisplayManager::processQueue() {
             case UiMsg::UPDATE_LEAN:
                 _leanAngle = msg.value;
                 break;
+
+            case UiMsg::UPDATE_PITCH:
+              _pitchAngle = msg.value;
+              break;
                 
             case UiMsg::UPDATE_TIME:
                 strncpy(_timeText, msg.text, sizeof(_timeText) - 1);

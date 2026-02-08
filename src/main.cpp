@@ -102,15 +102,22 @@ void setup() {
                   mlx1OK?"OK":"FAIL", mlx2OK?"OK":"FAIL", dhtOK?"OK":"FAIL",
                   imuOK?"OK":"FAIL", gpsOK?"OK":"FAIL", engineOK?"OK":"FAIL");
 
-    // 6. SD Karte (WICHTIG: Pin 15 nutzen!)
-    Serial.println("Init SD Card (Pin 15)...");
-    if (SD.begin(SD_CS, SPI, 20000000)) { // Expliziter Pin 15!
-        Serial.println("SD Card: OK");
-        displayManager.setInfoText("SD Card OK");
+// 6. SD Karte (RICHTIGE INITIALISIERUNG)
+Serial.println("Init SD Card...");
+
+// WICHTIG: Nutze die init() Methode des Managers, nicht nur SD.begin()!
+// Ersetze 'sdManager' durch den Namen deiner globalen Variable (z.B. sdCardManager)
+if (sdManager.init(SD_CS, VSPI_SCK, VSPI_MISO, VSPI_MOSI)) { 
+    Serial.println("SD Manager: Initialized");
+    
+    if (sdManager.createLogFile("/data.csv")) {
+        Serial.println("Datei /data.csv bereit!");
     } else {
-        Serial.println("SD Card: FAIL (Check Pin 15)");
-        displayManager.setInfoText("SD FAIL!");
+        Serial.println("Header konnte nicht geschrieben werden");
     }
+} else {
+    Serial.println("SD Hardware Fehler!");
+}
 
     // 7. Tasks starten
     taskManager.startAllTasks(&displayManager, &dataLogger, 
