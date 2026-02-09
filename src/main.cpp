@@ -98,6 +98,18 @@ void setup() {
     bool gpsOK = gpsSensor.begin();
     bool engineOK = engineSensor.begin();
 
+    if (imuOK) {
+        Serial.println("IMU erkannt. Starte Auto-Zero Kalibrierung...");
+        displayManager.setInfoText("KEEP BIKE UPRIGHT..."); // Info ans Display
+        displayManager.updateUI();
+        
+        imuSensor.calibrate(); // Misst 2 Sek. lang den Versatz (deine -103°)
+        
+        Serial.println("Kalibrierung abgeschlossen!");
+        displayManager.setInfoText("CALIBRATION OK");
+
+    }
+
     Serial.printf("Status: L:%s R:%s DHT:%s IMU:%s GPS:%s ENG:%s\n",
                   mlx1OK?"OK":"FAIL", mlx2OK?"OK":"FAIL", dhtOK?"OK":"FAIL",
                   imuOK?"OK":"FAIL", gpsOK?"OK":"FAIL", engineOK?"OK":"FAIL");

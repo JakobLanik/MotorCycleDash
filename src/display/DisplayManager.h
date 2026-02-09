@@ -15,6 +15,7 @@ struct UiMsg {
         UPDATE_PITCH,
         UPDATE_TIME,
         UPDATE_SPEED,
+        UPDATE_SATS,
         UPDATE_INFO,
         UPDATE_TIRE_LEFT,
         UPDATE_ENGINE,
@@ -83,6 +84,7 @@ private:
     float _pitchAngle = 0.0;
     char _timeText[32] = "--:--";
     float _speed = 0.0;
+    int _satelliteCount = 0;
     char _infoText[32] = "System Ready";
     float _tireTempLeft = 0.0;
     float _tireTempRight = 0.0;

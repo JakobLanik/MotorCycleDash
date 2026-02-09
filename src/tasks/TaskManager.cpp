@@ -229,7 +229,7 @@ void TaskManager::taskGPS(void* params) {
             int hour, minute, second;
             globalGpsSensor->getTime(hour, minute, second); 
 
-            // Logger füttern
+            // 1. Logger füttern (Funktioniert bereits)
             if (hour >= 0) {
                 char logTimeStr[12];
                 snprintf(logTimeStr, sizeof(logTimeStr), "%02d:%02d:%02d", hour, minute, second);
@@ -238,18 +238,26 @@ void TaskManager::taskGPS(void* params) {
             globalDataLogger->setGPSData(lat, lon, sats);
             if (!isnan(speed)) globalDataLogger->setSpeedKmh(speed);
 
-            // Display füttern
+            // 2. Display füttern
+            
+            // NEU: Satelliten an die Queue senden!
+            UiMsg msgSat;
+            msgSat.type = UiMsg::UPDATE_SATS; // Stellen Sie sicher, dass dies im Enum ist
+            msgSat.value = (float)sats;
+            globalDisplayManager->sendToQueue(msgSat);
+
+            // Geschwindigkeit (bestehend)
             if (!isnan(speed)) {
-                globalDisplayManager->setSpeed(speed);
-                UiMsg msg;
-                msg.type = UiMsg::UPDATE_SPEED;
-                msg.value = speed;
-                globalDisplayManager->sendToQueue(msg);
+                UiMsg msgSpeed;
+                msgSpeed.type = UiMsg::UPDATE_SPEED;
+                msgSpeed.value = speed;
+                globalDisplayManager->sendToQueue(msgSpeed);
             }
+
+            // Zeit (bestehend)
             if (hour >= 0) {
                 char timeStr[16];
                 snprintf(timeStr, sizeof(timeStr), "%02d:%02d", hour, minute);
-                globalDisplayManager->setTime(timeStr);
                 UiMsg msgT;
                 msgT.type = UiMsg::UPDATE_TIME;
                 strncpy(msgT.text, timeStr, sizeof(msgT.text));

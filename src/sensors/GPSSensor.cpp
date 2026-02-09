@@ -31,7 +31,7 @@ float GPSSensor::getLongitude() {
 }
 
 int GPSSensor::getSatellites() {
-    return _gps.satellites.isValid() ? (int)_gps.satellites.value() : 0;
+    return _gps.satellites.value(); 
 }
 
 void GPSSensor::getTime(int &hour, int &minute, int &second) {

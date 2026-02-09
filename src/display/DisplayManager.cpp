@@ -197,40 +197,40 @@ void DisplayManager::drawTimeBox() {
 }
 
 void DisplayManager::drawSpeedBox() {
-    // Clear area
+    // 1. Bereich löschen (Hintergrund)
     _tft->fillRect(_speedBoxArea.x, _speedBoxArea.y, 
                    _speedBoxArea.width, _speedBoxArea.height, ST77XX_BLACK);
     
-    // Draw border
+    // 2. Rahmen zeichnen (Dunkelgrau)
     _tft->drawRect(_speedBoxArea.x, _speedBoxArea.y, 
                    _speedBoxArea.width, _speedBoxArea.height, _tft->color565(80, 80, 80));
     
-    // Draw "SPEED" label at top
+    // 3. "SPEED" Label oben zentriert
     _tft->setTextColor(ST77XX_CYAN, ST77XX_BLACK);
     _tft->setTextSize(1);
     _tft->setCursor(_speedBoxArea.x + _speedBoxArea.width / 2 - 15, _speedBoxArea.y + 4);
     _tft->print("SPEED");
-    
-    // Draw speed value
-    char speedStr[16];
-    if (_speed < 100) {
-        snprintf(speedStr, sizeof(speedStr), "%.0f", _speed);
-    } else {
-        snprintf(speedStr, sizeof(speedStr), "%d", (int)_speed);
-    }
-    
-    _tft->setTextColor(ST77XX_CYAN, ST77XX_BLACK);
-    _tft->setTextSize(3);
-    int16_t valueWidth = strlen(speedStr) * 18;
-    _tft->setCursor(_speedBoxArea.x + _speedBoxArea.width / 2 - valueWidth / 2, 
-                    _timeBoxArea.y + _timeBoxArea.height / 2 - 12);
-    _tft->print(speedStr);
-    
-    // Draw "km/h" label next to value (small font)
-    _tft->setTextColor(ST77XX_CYAN, ST77XX_BLACK);
+
+    // --- NEU: Satelliten-Anzeige oben rechts ---
+    // Rot, wenn kein Fix (0-3), Grün, wenn Fix OK (4+)
+    uint16_t satColor = (_satelliteCount < 4) ? ST77XX_RED : ST77XX_GREEN;
+    _tft->setTextColor(satColor, ST77XX_BLACK);
+    // Wir setzen es bündig nach rechts mit etwas Abstand zum Rand
+    _tft->setCursor(_speedBoxArea.x + _speedBoxArea.width - 40, _speedBoxArea.y + 4);
+    _tft->printf("S:%d", _satelliteCount);
+    // --------------------------------------------
+
+    // 4. Die große Geschwindigkeitszahl
+    _tft->setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+    _tft->setTextSize(4);
+    // Etwas Einrücken für die zweistellige Anzeige
+    _tft->setCursor(_speedBoxArea.x + 15, _speedBoxArea.y + 18);
+    _tft->printf("%.0f", _speed);
+
+    // 5. Einheit "km/h" unten rechts
     _tft->setTextSize(1);
-    _tft->setCursor(_speedBoxArea.x + _speedBoxArea.width / 2 + valueWidth / 2 + 2, 
-                    _timeBoxArea.y + _timeBoxArea.height / 2 - 4);
+    _tft->setTextColor(_tft->color565(150, 150, 150), ST77XX_BLACK); // Grau
+    _tft->setCursor(_speedBoxArea.x + _speedBoxArea.width - 32, _speedBoxArea.y + _speedBoxArea.height - 10);
     _tft->print("km/h");
 }
 
@@ -361,47 +361,44 @@ void DisplayManager::processQueue() {
             case UiMsg::UPDATE_LEAN:
                 _leanAngle = msg.value;
                 break;
-
             case UiMsg::UPDATE_PITCH:
-              _pitchAngle = msg.value;
-              break;
-                
+                _pitchAngle = msg.value;
+                break;
             case UiMsg::UPDATE_TIME:
                 strncpy(_timeText, msg.text, sizeof(_timeText) - 1);
                 _timeText[sizeof(_timeText) - 1] = '\0';
                 break;
-                
             case UiMsg::UPDATE_SPEED:
                 _speed = msg.value;
                 break;
-                
-            case UiMsg::UPDATE_INFO:
+            case UiMsg::UPDATE_INFO: // Korrigiert (kein f am Ende)
                 strncpy(_infoText, msg.text, sizeof(_infoText) - 1);
                 _infoText[sizeof(_infoText) - 1] = '\0';
                 break;
-                
+            
+            // DIESER CASE MUSS UNBEDINGT REIN:
+            case UiMsg::UPDATE_SATS:
+                _satelliteCount = (int)msg.value;
+                break;
+
             case UiMsg::UPDATE_TIRE_LEFT:
                 _tireTempLeft = msg.value;
                 _tireLeftBgColor = msg.bgColor;
                 _tireLeftFgColor = msg.fgColor;
                 break;
-                
             case UiMsg::UPDATE_TIRE_RIGHT:
                 _tireTempRight = msg.value;
                 _tireRightBgColor = msg.bgColor;
                 _tireRightFgColor = msg.fgColor;
                 break;
-                
             case UiMsg::UPDATE_ENGINE:
                 _engineTemp = msg.value;
                 _engineBgColor = msg.bgColor;
                 _engineFgColor = msg.fgColor;
                 break;
-                
             case UiMsg::UPDATE_AMBIENT:
                 _ambientTemp = msg.value;
                 break;
-                
             case UiMsg::UPDATE_HUMIDITY:
                 _humidity = msg.value;
                 break;
