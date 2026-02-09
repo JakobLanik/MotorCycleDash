@@ -107,7 +107,7 @@ Serial.println("Init SD Card...");
 
 // WICHTIG: Nutze die init() Methode des Managers, nicht nur SD.begin()!
 // Ersetze 'sdManager' durch den Namen deiner globalen Variable (z.B. sdCardManager)
-if (sdManager.init(SD_CS, VSPI_SCK, VSPI_MISO, VSPI_MOSI)) { 
+if (sdManager.init(VSPI_SCK, VSPI_MISO, VSPI_MOSI, SD_CS)) { 
     Serial.println("SD Manager: Initialized");
     
     if (sdManager.createLogFile("/data.csv")) {

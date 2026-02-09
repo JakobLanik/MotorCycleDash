@@ -12,14 +12,18 @@ public:
   bool isAvailable() override;
   
   float getSpeed();
-  void getTime(int &hour, int &minute);
-  void getLocation(float &lat, float &lng);
-  int getSatellites();
+    float getLatitude();
+    float getLongitude();
+    int getSatellites();
+    void getTime(int &hour, int &minute, int &second);
+    void getLocation(float &lat, float &lng);
   void update();
   
 private:
   TinyGPSPlus _gps;
   HardwareSerial _serial;
 };
+
+
 
 #endif

@@ -84,6 +84,13 @@ void DataLogger::setGPSData(float lat, float lng, int satellites) {
   _currentData.satellites = satellites;
 }
 
+void DataLogger::setGPSTime(const char* timeStr) {
+    if (timeStr) {
+        // Wir kopieren den String in unser Daten-Objekt
+        strncpy(_currentData.gpsTime, timeStr, sizeof(_currentData.gpsTime) - 1);
+    }
+}
+
 LogData DataLogger::getCurrentData() const {
   return _currentData;
 }
@@ -99,7 +106,7 @@ void DataLogger::resetMaxValues() {
 
 // Private methods
 void DataLogger::writeDataToSD() {
-  if (!_sdManager || !_sdManager->isPresent()) return;
+  if (!_sdManager->isPresent()) return;
   
   char buffer[512];
   
@@ -108,13 +115,14 @@ void DataLogger::writeDataToSD() {
     "%lu,%.2f,%.2f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.6f,%.6f,%d,",
     _currentData.timestamp,
     _currentData.leanAngle,
-    _currentData.pitchAngle, // <--- Pitch hinzugefügt
+    _currentData.pitchAngle, 
     _currentData.speedKmh,
     _currentData.tireTempL,
     _currentData.tireTempR,
     _currentData.engineTemp,
     _currentData.ambientTempDHT,
     _currentData.humidity,
+    _currentData.gpsTime,
     _currentData.latitude,
     _currentData.longitude,
     _currentData.satellites);
@@ -124,11 +132,11 @@ void DataLogger::writeDataToSD() {
   snprintf(maxBuffer, sizeof(maxBuffer), "%.2f,%.2f,%.1f,%.1f,%.1f,%.1f,%.1f\n",
     _maxValues.maxLeanLeft,
     _maxValues.maxLeanRight,
+    _maxValues.maxPitch,
     _maxValues.maxSpeed,
     _maxValues.maxTireTempL,
     _maxValues.maxTireTempR,
-    _maxValues.maxEngineTemp,
-    _maxValues.maxPitch); // <--- MaxPitch hinzugefügt
+    _maxValues.maxEngineTemp); 
   
   strcat(buffer, maxBuffer);
   _sdManager->writeLogLine(buffer);

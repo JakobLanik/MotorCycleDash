@@ -1,5 +1,5 @@
-#ifndef SDCARD_MANAGER_H
-#define SDCARD_MANAGER_H
+#ifndef SDCARDMANAGER_H
+#define SDCARDMANAGER_H
 
 #include <Arduino.h>
 #include <FS.h>
@@ -8,31 +8,30 @@
 
 class SDCardManager {
 public:
-    // Konstruktor
     SDCardManager();
-    
-    // Initialisierungsmethoden
-    bool init();  // Ohne Parameter (verwendet Standard-Pins)
-    bool init(uint8_t csPin, uint8_t sckPin, uint8_t misoPin, uint8_t mosiPin);
-    
-    // Statusmethoden
+
+    // Init-Methoden
+    bool init(uint8_t sck, uint8_t miso, uint8_t mosi, uint8_t cs);
+    bool init(); // Fallback ohne Parameter
+
+    // Status
     bool isPresent();
+
+    // Datei-Operationen
+    bool createLogFile(const char* filename);
     
-    // Dateioperationen
-    bool createLogFile(const char* filename = "/data.csv");
-    File openFile(const char* filename, const char* mode = FILE_WRITE);
+    // Schreib-Methoden (Diese haben gefehlt!)
+    bool writeLogLine(const String& data);
+    bool writeLine(const String& data);
+
+    // Datei-Hilfsmethoden
+    File openFile(const char* filename, const char* mode);
     bool fileExists(const char* filename);
     
-    // Schreibmethoden (beide gehen)
-    bool writeLogLine(const String& data);
-    bool writeLine(const String& data);  // Alias für writeLogLine
-    
-    // Info-Methoden
+    // Info & Debug
     uint64_t getFreeSpace();
     uint64_t getCardSize();
     uint8_t getCardType();
-    
-    // Debug-Methoden
     void listFiles();
 
 private:
@@ -41,6 +40,7 @@ private:
     uint8_t misoPin;
     uint8_t mosiPin;
     bool initialized;
+    String activeLogFile;
     
     void setupSPIPins();
 };

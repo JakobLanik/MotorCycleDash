@@ -22,6 +22,7 @@ public:
   void setEngineTemp(float temp);
   void setAmbientTemp(float temp);
   void setHumidity(float humidity);
+  void setGPSTime(const char* timeStr); // Neu: Für die Uhrzeit vom GPS
   void setGPSData(float lat, float lng, int satellites);
   
   // Getter

@@ -1,39 +1,32 @@
 #include "SDCardManager.h"
 #include <Arduino.h>
 
-// Standard-Pins für ESP32 (VSPI)
-#define DEFAULT_CS_PIN    5
-#define DEFAULT_SCK_PIN   18
-#define DEFAULT_MISO_PIN  19
-#define DEFAULT_MOSI_PIN  23
+// Konstruktor - Initialisiert die Variablen
+SDCardManager::SDCardManager() : 
+    csPin(5), 
+    sckPin(18), 
+    misoPin(19), 
+    mosiPin(23), 
+    initialized(false), 
+    activeLogFile("/data.csv") 
+{}
 
-SDCardManager::SDCardManager() {
-    csPin = DEFAULT_CS_PIN;
-    sckPin = DEFAULT_SCK_PIN;
-    misoPin = DEFAULT_MISO_PIN;
-    mosiPin = DEFAULT_MOSI_PIN;
-    initialized = false;
-}
-
-bool SDCardManager::init() {
-    return init(DEFAULT_CS_PIN, DEFAULT_SCK_PIN, DEFAULT_MISO_PIN, DEFAULT_MOSI_PIN);
-}
-
-bool SDCardManager::init(uint8_t cs, uint8_t sck, uint8_t miso, uint8_t mosi) {
-    csPin = cs;
+// Die Haupt-Initialisierung, die von deiner main.cpp aufgerufen wird
+bool SDCardManager::init(uint8_t sck, uint8_t miso, uint8_t mosi, uint8_t cs) {
     sckPin = sck;
     misoPin = miso;
     mosiPin = mosi;
+    csPin = cs;
     
     Serial.println("========== SD CARD INIT ==========");
     
-    // SPI mit den definierten Pins starten
+    // SPI Instanz mit den übergebenen Pins konfigurieren
     SPI.begin(sckPin, misoPin, mosiPin, csPin);
     
-    Serial.printf("Using pins: CS=%d, SCK=%d, MISO=%d, MOSI=%d\n", csPin, sckPin, misoPin, mosiPin);
+    Serial.printf("Using pins: SCK=%d, MISO=%d, MOSI=%d, CS=%d\n", sckPin, misoPin, mosiPin, csPin);
     
     if (!SD.begin(csPin)) {
-        Serial.println("SD Card initialization FAILED!");
+        Serial.println("SD Card Mount FAILED!");
         initialized = false;
         return false;
     }
@@ -45,19 +38,16 @@ bool SDCardManager::init(uint8_t cs, uint8_t sck, uint8_t miso, uint8_t mosi) {
         return false;
     }
 
-    Serial.print("SD Card Type: ");
-    if(cardType == CARD_MMC) Serial.println("MMC");
-    else if(cardType == CARD_SD) Serial.println("SDSC");
-    else if(cardType == CARD_SDHC) Serial.println("SDHC");
-    else Serial.println("UNKNOWN");
-
-    Serial.printf("Card Size: %llu MB\n", SD.cardSize() / (1024 * 1024));
+    Serial.printf("SD Card initialized. Size: %llu MB\n", SD.cardSize() / (1024 * 1024));
     
     initialized = true;
-    Serial.println("SD Card initialized successfully!");
     Serial.println("==================================");
-    
     return true;
+}
+
+// Fallback init ohne Parameter (verwendet Default Pins)
+bool SDCardManager::init() {
+    return init(18, 19, 23, 5);
 }
 
 bool SDCardManager::isPresent() {
@@ -68,20 +58,38 @@ bool SDCardManager::isPresent() {
 bool SDCardManager::createLogFile(const char* filename) {
     if (!initialized) return false;
     
-    // Wir überschreiben die Datei beim Start neu (FILE_WRITE), 
-    // um einen sauberen Header zu haben.
-    File file = SD.open(filename, FILE_WRITE);
+    // Speichere den Dateinamen für spätere Schreibvorgänge
+    activeLogFile = String(filename);
+    if (!activeLogFile.startsWith("/")) {
+        activeLogFile = "/" + activeLogFile;
+    }
+
+    // Wir suchen nach einer freien Nummer, damit nichts überschrieben wird
+    char finalPath[32];
+    String base = activeLogFile;
+    if (base.endsWith(".csv")) base = base.substring(0, base.length() - 4);
+
+    for (int i = 1; i < 1000; i++) {
+        snprintf(finalPath, sizeof(finalPath), "%s_%03d.csv", base.c_str(), i);
+        if (!SD.exists(finalPath)) {
+            activeLogFile = String(finalPath);
+            break;
+        }
+    }
+    
+    File file = SD.open(activeLogFile, FILE_WRITE);
     if (!file) {
-        Serial.printf("Failed to create file '%s'\n", filename);
+        Serial.printf("Failed to create file '%s'\n", activeLogFile.c_str());
         return false;
     }
     
     // Dieser Header muss EXAKT zur Reihenfolge im DataLogger.cpp passen!
-    String header = "timestamp,lean,pitch,speed,tireL,tireR,engine,amb_temp,humidity,lat,lon,sats,";
+    // WICHTIG: gps_time hinzugefügt, wie im TaskManager/DataLogger gefordert
+    String header = "timestamp,gps_time,lean,pitch,speed,tireL,tireR,engine,amb_temp,humidity,lat,lon,sats,";
     header += "maxLeanL,maxLeanR,maxSpeed,maxTireL,maxTireR,maxEng,maxPitch";
     
     if (file.println(header)) {
-        Serial.printf("New log file created: %s\n", filename);
+        Serial.printf("New log file created: %s\n", activeLogFile.c_str());
         file.flush();
         file.close();
         return true;
@@ -91,22 +99,25 @@ bool SDCardManager::createLogFile(const char* filename) {
     }
 }
 
-// Schreibt eine Zeile und erzwingt den physikalischen Schreibvorgang (Flush)
+// Schreibt eine Zeile in die aktive Log-Datei
 bool SDCardManager::writeLogLine(const String& data) {
     if (!initialized) return false;
     
-    // Immer im Append-Modus öffnen
-    File file = SD.open("/data.csv", FILE_APPEND); 
+    File file = SD.open(activeLogFile, FILE_APPEND); 
     if (!file) {
         return false;
     }
     
-    file.println(data);
-    file.flush(); // Zwingend erforderlich für Datensicherheit
+    if (file.println(data)) {
+        file.flush(); // Datensicherheit bei Stromausfall/Vibration
+        file.close();
+        return true;
+    }
     file.close();
-    return true;
+    return false;
 }
 
+// Alias für writeLogLine
 bool SDCardManager::writeLine(const String& data) {
     return writeLogLine(data);
 }
@@ -123,7 +134,7 @@ bool SDCardManager::fileExists(const char* filename) {
 
 uint64_t SDCardManager::getFreeSpace() {
     if (!initialized) return 0;
-    return (SD.cardSize() - SD.usedBytes()) / (1024 * 1024);
+    return (SD.totalBytes() - SD.usedBytes()) / (1024 * 1024);
 }
 
 uint64_t SDCardManager::getCardSize() {
@@ -140,10 +151,12 @@ void SDCardManager::listFiles() {
     if (!initialized) return;
     File root = SD.open("/");
     File file = root.openNextFile();
+    Serial.println("--- Files on SD Card ---");
     while (file) {
         Serial.printf("  %s  %u bytes\n", file.name(), file.size());
         file = root.openNextFile();
     }
+    Serial.println("------------------------");
     root.close();
 }
 

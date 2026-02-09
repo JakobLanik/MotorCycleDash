@@ -13,7 +13,7 @@
 #define TFT_DC      16     // Data/Command
 #define TFT_RST     17     // Reset
 #define TFT_BL      -1     // Backlight (nicht verwendet)
-#define SD_CS       15     // Chip Select SD-Karte (Strapping Pin, meist OK)
+#define SD_CS       26     // Chip Select SD-Karte (Strapping Pin, meist OK)
 
 // ============================================
 // SPI BUS 2: HSPI (Beschleunigungssensor / IMU)

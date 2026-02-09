@@ -3,6 +3,7 @@
 
 struct LogData {
   unsigned long timestamp;
+  char gpsTime[12];
   float leanAngle;
   float pitchAngle;
   float speedKmh;
