@@ -61,3 +61,9 @@ void GPSSensor::getLocation(float &lat, float &lng) {
         lat = lng = 0.0f;
     }
 }
+
+
+bool GPSSensor::isFixed() {
+    // Prüft ob die Location valide ist und nicht älter als 2 Sekunden
+    return _gps.location.isValid() && _gps.location.age() < 2000;
+}

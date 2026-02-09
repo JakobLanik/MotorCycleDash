@@ -215,46 +215,58 @@ void TaskManager::taskIMU(void* params) {
     }
 }
 
-// GPS Task - FIX: Zeit inkl. Sekunden und volles Logging
+// GPS Task - KORRIGIERT: Mit NULL-Logging für Lat/Lon
 void TaskManager::taskGPS(void* params) {
     Serial.println("GPS Task started");
     while (1) {
         if (globalGpsSensor && globalDisplayManager && globalDataLogger) {
             globalGpsSensor->update();
             
-            float speed = globalGpsSensor->getSpeed();
-            float lat = globalGpsSensor->getLatitude();
-            float lon = globalGpsSensor->getLongitude();
+            // 1. Status prüfen
+            bool hasFix = globalGpsSensor->isFixed(); 
             int sats = globalGpsSensor->getSatellites();
+            float speed = hasFix ? globalGpsSensor->getSpeed() : 0.0f;
+            
             int hour, minute, second;
             globalGpsSensor->getTime(hour, minute, second); 
 
-            // 1. Logger füttern (Funktioniert bereits)
+            // 2. Logger füttern
+            // Zeit-Logging (auch ohne Fix, falls GPS-Uhrzeit schon da)
             if (hour >= 0) {
                 char logTimeStr[12];
                 snprintf(logTimeStr, sizeof(logTimeStr), "%02d:%02d:%02d", hour, minute, second);
                 globalDataLogger->setGPSTime(logTimeStr);
             }
-            globalDataLogger->setGPSData(lat, lon, sats);
-            if (!isnan(speed)) globalDataLogger->setSpeedKmh(speed);
 
-            // 2. Display füttern
+            // Lat/Lon Logik: Falls kein Fix -> "null"
+            if (hasFix) {
+                float lat = globalGpsSensor->getLatitude();
+                float lon = globalGpsSensor->getLongitude();
+                globalDataLogger->setGPSData(lat, lon, sats);
+            } else {
+                // Diese Methode musst du im DataLogger implementieren (siehe unten)
+                globalDataLogger->setGPSInvalid(sats); 
+            }
+
+            if (!isnan(speed)) {
+                globalDataLogger->setSpeedKmh(speed);
+            }
+
+            // 3. Display füttern (via Queue)
             
-            // NEU: Satelliten an die Queue senden!
+            // Satelliten (immer senden)
             UiMsg msgSat;
-            msgSat.type = UiMsg::UPDATE_SATS; // Stellen Sie sicher, dass dies im Enum ist
+            msgSat.type = UiMsg::UPDATE_SATS;
             msgSat.value = (float)sats;
             globalDisplayManager->sendToQueue(msgSat);
 
-            // Geschwindigkeit (bestehend)
-            if (!isnan(speed)) {
-                UiMsg msgSpeed;
-                msgSpeed.type = UiMsg::UPDATE_SPEED;
-                msgSpeed.value = speed;
-                globalDisplayManager->sendToQueue(msgSpeed);
-            }
+            // Geschwindigkeit
+            UiMsg msgSpeed;
+            msgSpeed.type = UiMsg::UPDATE_SPEED;
+            msgSpeed.value = speed;
+            globalDisplayManager->sendToQueue(msgSpeed);
 
-            // Zeit (bestehend)
+            // Uhrzeit (nur wenn valide)
             if (hour >= 0) {
                 char timeStr[16];
                 snprintf(timeStr, sizeof(timeStr), "%02d:%02d", hour, minute);

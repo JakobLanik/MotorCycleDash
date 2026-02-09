@@ -10,7 +10,7 @@ public:
   bool begin() override;
   float readValue() override;
   bool isAvailable() override;
-  
+  bool isFixed();
   float getSpeed();
     float getLatitude();
     float getLongitude();

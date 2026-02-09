@@ -24,6 +24,7 @@ public:
   void setHumidity(float humidity);
   void setGPSTime(const char* timeStr); // Neu: Für die Uhrzeit vom GPS
   void setGPSData(float lat, float lng, int satellites);
+  void setGPSInvalid(int sats); // Neu: Für ungültige GPS-Daten (kein Fix)
   
   // Getter
   LogData getCurrentData() const;
@@ -37,7 +38,13 @@ private:
   LogData _currentData;
   MaxValues _maxValues;
   unsigned long _lastLogTime;
-  
+   char _latStr[16];
+    char _lonStr[16];
+    int _sats;
+
+  private:
+   
+
   void writeDataToSD();
   void updateMaxLean(float angle);
   void updateMaxPitch(float pitch);

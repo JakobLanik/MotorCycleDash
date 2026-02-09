@@ -82,6 +82,9 @@ void DataLogger::setGPSData(float lat, float lng, int satellites) {
   _currentData.latitude = lat;
   _currentData.longitude = lng;
   _currentData.satellites = satellites;
+
+  snprintf(_latStr, sizeof(_latStr), "%.6f", lat);
+    snprintf(_lonStr, sizeof(_lonStr), "%.6f", lng);
 }
 
 void DataLogger::setGPSTime(const char* timeStr) {
@@ -126,8 +129,8 @@ void DataLogger::writeDataToSD() {
         _currentData.engineTemp,     // %.1f
         _currentData.ambientTempDHT, // %.1f
         _currentData.humidity,       // %.1f
-        _currentData.latitude,       // %.6f
-        _currentData.longitude,      // %.6f
+        _latStr,          // Benutzt jetzt den Text-Puffer (kann Zahl oder "null" sein)
+        _lonStr,
         _currentData.satellites      // %d
     );
     
@@ -207,4 +210,16 @@ void DataLogger::updateMaxEngineTemp(float temp) {
     _maxValues.maxEngineTemp = temp;
     _maxValues.lastMaxUpdate = now;
   }
+}
+
+void DataLogger::setGPSInvalid(int sats) {
+    // 1. "null" in die Text-Puffer schreiben für die CSV
+    strncpy(_latStr, "null", sizeof(_latStr) - 1);
+    _latStr[sizeof(_latStr) - 1] = '\0';
+    
+    strncpy(_lonStr, "null", sizeof(_lonStr) - 1);
+    _lonStr[sizeof(_lonStr) - 1] = '\0';
+    
+    // 2. Satellitenanzahl in der bestehenden Struktur speichern
+    _currentData.satellites = sats; 
 }
