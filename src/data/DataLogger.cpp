@@ -106,37 +106,41 @@ void DataLogger::resetMaxValues() {
 
 // Private methods
 void DataLogger::writeDataToSD() {
-  if (!_sdManager->isPresent()) return;
-  
-  char buffer[512];
-  
-  // 12 Basis-Werte
-  snprintf(buffer, sizeof(buffer),
-    "%lu,%.2f,%.2f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.6f,%.6f,%d,",
-    _currentData.timestamp,
-    _currentData.leanAngle,
-    _currentData.pitchAngle, 
-    _currentData.speedKmh,
-    _currentData.tireTempL,
-    _currentData.tireTempR,
-    _currentData.engineTemp,
-    _currentData.ambientTempDHT,
-    _currentData.humidity,
-    _currentData.gpsTime,
-    _currentData.latitude,
-    _currentData.longitude,
-    _currentData.satellites);
-  
-  // 7 Max-Werte
-  char maxBuffer[128];
-  snprintf(maxBuffer, sizeof(maxBuffer), "%.2f,%.2f,%.1f,%.1f,%.1f,%.1f,%.1f\n",
-    _maxValues.maxLeanLeft,
-    _maxValues.maxLeanRight,
-    _maxValues.maxPitch,
-    _maxValues.maxSpeed,
-    _maxValues.maxTireTempL,
-    _maxValues.maxTireTempR,
-    _maxValues.maxEngineTemp); 
+    if (!_sdManager->isPresent()) return;
+    
+    char buffer[512];
+    
+    // Reihenfolge passend zum CSV-Header:
+    // 1.timestamp, 2.gps_time (s), 3.lean, 4.pitch, 5.speed, 6.tireL, 7.tireR, 
+    // 8.engine, 9.amb_temp, 10.humidity, 11.lat, 12.lon, 13.sats
+    
+    snprintf(buffer, sizeof(buffer),
+        "%lu,%s,%.2f,%.2f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.6f,%.6f,%d,",
+        _currentData.timestamp,      // %lu
+        _currentData.gpsTime,        // %s (String!)
+        _currentData.leanAngle,      // %.2f
+        _currentData.pitchAngle,     // %.2f
+        _currentData.speedKmh,       // %.1f
+        _currentData.tireTempL,      // %.1f
+        _currentData.tireTempR,      // %.1f
+        _currentData.engineTemp,     // %.1f
+        _currentData.ambientTempDHT, // %.1f
+        _currentData.humidity,       // %.1f
+        _currentData.latitude,       // %.6f
+        _currentData.longitude,      // %.6f
+        _currentData.satellites      // %d
+    );
+    
+    // Max-Werte (7 Stück)
+    char maxBuffer[128];
+    snprintf(maxBuffer, sizeof(maxBuffer), "%.2f,%.2f,%.1f,%.1f,%.1f,%.1f,%.1f\n",
+    _maxValues.maxLeanLeft,    // maxLeanL
+    _maxValues.maxLeanRight,   // maxLeanR
+    _maxValues.maxSpeed,       // maxSpeed
+    _maxValues.maxTireTempL,   // maxTireL
+    _maxValues.maxTireTempR,   // maxTireR
+    _maxValues.maxEngineTemp,  // maxEng
+    _maxValues.maxPitch);      // maxPitch
   
   strcat(buffer, maxBuffer);
   _sdManager->writeLogLine(buffer);

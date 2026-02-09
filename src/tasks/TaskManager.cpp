@@ -187,20 +187,28 @@ void TaskManager::taskIMU(void* params) {
     while (1) {
         if (globalImuSensor && globalDisplayManager) {
             float leanAngle = globalImuSensor->calculateRollAngle();
+            float pitchAngle = globalImuSensor->calculatePitchAngle();
             
-            // DEBUG: Zeig uns im Log, was der Sensor wirklich sagt
-            // Serial.printf("IMU Raw: %f\n", leanAngle); 
+            // 1. Daten an Logger (SD-Karte) - Immer beides setzen
+            if (globalDataLogger) {
+                globalDataLogger->setLeanAngle(leanAngle);
+                globalDataLogger->setPitchAngle(pitchAngle);
+            }
 
+            // 2. Nachricht für LEAN an UI senden
             if (!isnan(leanAngle)) {
-                globalDisplayManager->setLeanAngle(leanAngle);
-                
-                UiMsg msg;
-                msg.type = UiMsg::UPDATE_LEAN;
-                msg.value = leanAngle;
-                globalDisplayManager->sendToQueue(msg);
-            } else {
-                // Wenn leanAngle NaN ist, wissen wir, der I2C Bus ist tot!
-                // Serial.println("IMU liefert NaN!"); 
+                UiMsg msgLean;
+                msgLean.type = UiMsg::UPDATE_LEAN;
+                msgLean.value = leanAngle;
+                globalDisplayManager->sendToQueue(msgLean);
+            }
+
+            // 3. Nachricht für PITCH an UI senden
+            if (!isnan(pitchAngle)) {
+                UiMsg msgPitch;
+                msgPitch.type = UiMsg::UPDATE_PITCH; // <--- Das fehlte!
+                msgPitch.value = pitchAngle;
+                globalDisplayManager->sendToQueue(msgPitch);
             }
         }
         vTaskDelay(pdMS_TO_TICKS(IMU_UPDATE_INTERVAL));
