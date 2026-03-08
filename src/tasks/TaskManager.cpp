@@ -3,7 +3,7 @@
 #include "../config/Constants.h"
 #include "../display/DisplayManager.h"
 
-// Global variables
+// Globale Zeiger auf die Hardware-Instanzen
 static DisplayManager* globalDisplayManager = nullptr;
 static DataLogger* globalDataLogger = nullptr;
 static MLX90614Sensor* globalTireSensorLeft = nullptr;
@@ -22,7 +22,6 @@ void TaskManager::startAllTasks(DisplayManager* displayManager,
                                 ADXL345Sensor* imuSensor,
                                 GPSSensor* gpsSensor) {
     
-    // Set global pointers
     globalDisplayManager = displayManager;
     globalDataLogger = dataLogger;
     globalTireSensorLeft = tireSensorLeft;
@@ -34,7 +33,6 @@ void TaskManager::startAllTasks(DisplayManager* displayManager,
     
     Serial.println("========== STARTING TASKS ==========");
     
-    // Create FreeRTOS tasks
     xTaskCreatePinnedToCore(taskUITick, "UI_Task", 4096, NULL, TASK_PRIORITY_UI, NULL, APP_CPU_NUM);
     xTaskCreatePinnedToCore(taskDHT22, "DHT22_Task", 4096, NULL, TASK_PRIORITY_SENSORS, NULL, APP_CPU_NUM);
     xTaskCreatePinnedToCore(taskTireL, "TireL_Task", 4096, NULL, TASK_PRIORITY_SENSORS, NULL, APP_CPU_NUM);
@@ -45,10 +43,9 @@ void TaskManager::startAllTasks(DisplayManager* displayManager,
     xTaskCreatePinnedToCore(taskDataLogger, "Logger_Task", 4096, NULL, TASK_PRIORITY_SENSORS, NULL, APP_CPU_NUM);
     
     Serial.println("All tasks started successfully!");
-    Serial.println("====================================");
 }
 
-// Helper functions
+// Hilfsfunktionen für Farben
 static uint16_t getTempColor(float temp) {
     if (temp < 20.0) return ST77XX_BLUE;
     if (temp < 40.0) return ST77XX_CYAN;
@@ -59,47 +56,32 @@ static uint16_t getTempColor(float temp) {
 }
 
 static uint16_t getTextColor(uint16_t bgColor) {
-    uint8_t r = ((bgColor >> 11) & 0x1F) * 255 / 31;
-    uint8_t g = ((bgColor >> 5) & 0x3F) * 255 / 63;
-    uint8_t b = (bgColor & 0x1F) * 255 / 31;
-    int brightness = (r + g + b) / 3;
-    return (brightness < 128) ? ST77XX_WHITE : ST77XX_BLACK;
+    uint8_t r = ((bgColor >> 11) & 0x1F);
+    uint8_t g = ((bgColor >> 5) & 0x3F);
+    uint8_t b = (bgColor & 0x1F);
+    return (r + g + b < 30) ? ST77XX_WHITE : ST77XX_BLACK;
 }
 
-// UI Task
 void TaskManager::taskUITick(void* params) {
-    Serial.println("UI Task started");
     while (1) {
         if (globalDisplayManager) globalDisplayManager->updateUI();
         vTaskDelay(pdMS_TO_TICKS(UI_UPDATE_INTERVAL));
     }
 }
 
-// DHT22 Task - FIX: Loggt jetzt auch
 void TaskManager::taskDHT22(void* params) {
-    Serial.println("DHT22 Task started");
     while (1) {
-        if (globalDhtSensor && globalDisplayManager) {
+        if (globalDhtSensor) {
             float temp = globalDhtSensor->readTemperature();
-            float humidity = globalDhtSensor->readHumidity();
-            
-            if (!isnan(temp) && !isnan(humidity)) {
-                globalDisplayManager->setAmbientTemp(temp);
-                globalDisplayManager->setHumidity(humidity);
-                
-                // An Logger senden
+            float hum = globalDhtSensor->readHumidity();
+            if (!isnan(temp)) {
                 if (globalDataLogger) {
                     globalDataLogger->setAmbientTemp(temp);
-                    globalDataLogger->setHumidity(humidity);
+                    globalDataLogger->setHumidity(hum);
                 }
-                
                 UiMsg msg;
                 msg.type = UiMsg::UPDATE_AMBIENT;
                 msg.value = temp;
-                globalDisplayManager->sendToQueue(msg);
-                
-                msg.type = UiMsg::UPDATE_HUMIDITY;
-                msg.value = humidity;
                 globalDisplayManager->sendToQueue(msg);
             }
         }
@@ -107,24 +89,19 @@ void TaskManager::taskDHT22(void* params) {
     }
 }
 
-// Left Tire - FIX: Loggt jetzt auch
 void TaskManager::taskTireL(void* params) {
-    Serial.println("TireL Task started");
     while (1) {
-        if (globalTireSensorLeft && globalDisplayManager) {
+        if (globalTireSensorLeft) {
             float temp = globalTireSensorLeft->readObjectTemp();
             if (!isnan(temp)) {
-                uint16_t bgColor = getTempColor(temp);
-                uint16_t textColor = getTextColor(bgColor);
-                
-                globalDisplayManager->setTireTempLeft(temp, bgColor, textColor);
+                uint16_t bg = getTempColor(temp);
                 if (globalDataLogger) globalDataLogger->setTireTempL(temp);
                 
                 UiMsg msg;
                 msg.type = UiMsg::UPDATE_TIRE_LEFT;
                 msg.value = temp;
-                msg.bgColor = bgColor;
-                msg.fgColor = textColor;
+                msg.bgColor = bg;
+                msg.fgColor = getTextColor(bg);
                 globalDisplayManager->sendToQueue(msg);
             }
         }
@@ -132,24 +109,19 @@ void TaskManager::taskTireL(void* params) {
     }
 }
 
-// Right Tire - FIX: Loggt jetzt auch
 void TaskManager::taskTireR(void* params) {
-    Serial.println("TireR Task started");
     while (1) {
-        if (globalTireSensorRight && globalDisplayManager) {
+        if (globalTireSensorRight) {
             float temp = globalTireSensorRight->readObjectTemp();
             if (!isnan(temp)) {
-                uint16_t bgColor = getTempColor(temp);
-                uint16_t textColor = getTextColor(bgColor);
-                
-                globalDisplayManager->setTireTempRight(temp, bgColor, textColor);
+                uint16_t bg = getTempColor(temp);
                 if (globalDataLogger) globalDataLogger->setTireTempR(temp);
                 
                 UiMsg msg;
                 msg.type = UiMsg::UPDATE_TIRE_RIGHT;
                 msg.value = temp;
-                msg.bgColor = bgColor;
-                msg.fgColor = textColor;
+                msg.bgColor = bg;
+                msg.fgColor = getTextColor(bg);
                 globalDisplayManager->sendToQueue(msg);
             }
         }
@@ -157,110 +129,86 @@ void TaskManager::taskTireR(void* params) {
     }
 }
 
-// Engine Task - FIX: Loggt jetzt auch
 void TaskManager::taskEngine(void* params) {
-    Serial.println("Engine Task started");
     while (1) {
-        if (globalEngineSensor && globalDisplayManager) {
+        if (globalEngineSensor) {
             float temp = globalEngineSensor->readSmoothed();
-            if (!isnan(temp) && temp > -40 && temp < 200) {
-                uint16_t bgColor = getTempColor(temp);
-                uint16_t textColor = getTextColor(bgColor);
-                
-                globalDisplayManager->setEngineTemp(temp, bgColor, textColor);
+            if (!isnan(temp)) {
+                uint16_t bg = getTempColor(temp);
                 if (globalDataLogger) globalDataLogger->setEngineTemp(temp);
                 
                 UiMsg msg;
                 msg.type = UiMsg::UPDATE_ENGINE;
                 msg.value = temp;
-                msg.bgColor = bgColor;
-                msg.fgColor = textColor;
+                msg.bgColor = bg;
+                msg.fgColor = getTextColor(bg);
                 globalDisplayManager->sendToQueue(msg);
             }
         }
         vTaskDelay(pdMS_TO_TICKS(ENGINE_UPDATE_INTERVAL));
     }
 }
-//imu task
+
 void TaskManager::taskIMU(void* params) {
-    Serial.println("IMU Task started");
     while (1) {
-        if (globalImuSensor && globalDisplayManager) {
-            float leanAngle = globalImuSensor->calculateRollAngle();
-            float pitchAngle = globalImuSensor->calculatePitchAngle();
-            
-            // 1. Daten an Logger (SD-Karte) - Immer beides setzen
+        if (globalImuSensor) {
+            float lean = globalImuSensor->calculateRollAngle();
+            float pitch = globalImuSensor->calculatePitchAngle();
             if (globalDataLogger) {
-                globalDataLogger->setLeanAngle(leanAngle);
-                globalDataLogger->setPitchAngle(pitchAngle);
+                globalDataLogger->setLeanAngle(lean);
+                globalDataLogger->setPitchAngle(pitch);
             }
-
-            // 2. Nachricht für LEAN an UI senden
-            if (!isnan(leanAngle)) {
-                UiMsg msgLean;
-                msgLean.type = UiMsg::UPDATE_LEAN;
-                msgLean.value = leanAngle;
-                globalDisplayManager->sendToQueue(msgLean);
-            }
-
-            // 3. Nachricht für PITCH an UI senden
-            if (!isnan(pitchAngle)) {
-                UiMsg msgPitch;
-                msgPitch.type = UiMsg::UPDATE_PITCH; // <--- Das fehlte!
-                msgPitch.value = pitchAngle;
-                globalDisplayManager->sendToQueue(msgPitch);
-            }
+            
+            UiMsg msgL;
+            msgL.type = UiMsg::UPDATE_LEAN;
+            msgL.value = lean;
+            globalDisplayManager->sendToQueue(msgL);
+            
+            UiMsg msgP;
+            msgP.type = UiMsg::UPDATE_PITCH;
+            msgP.value = pitch;
+            globalDisplayManager->sendToQueue(msgP);
         }
         vTaskDelay(pdMS_TO_TICKS(IMU_UPDATE_INTERVAL));
     }
 }
 
-// GPS Task - FIX: Zeit inkl. Sekunden und volles Logging
 void TaskManager::taskGPS(void* params) {
-    Serial.println("GPS Task started");
     while (1) {
-        if (globalGpsSensor && globalDisplayManager && globalDataLogger) {
+        if (globalGpsSensor) {
             globalGpsSensor->update();
             
+            int sats = globalGpsSensor->getSatellites();
             float speed = globalGpsSensor->getSpeed();
             float lat = globalGpsSensor->getLatitude();
             float lon = globalGpsSensor->getLongitude();
-            int sats = globalGpsSensor->getSatellites();
-            int hour, minute, second;
-            globalGpsSensor->getTime(hour, minute, second); 
+            int h, m, s;
+            globalGpsSensor->getTime(h, m, s);
 
-            // 1. Logger füttern (Funktioniert bereits)
-            if (hour >= 0) {
-                char logTimeStr[12];
-                snprintf(logTimeStr, sizeof(logTimeStr), "%02d:%02d:%02d", hour, minute, second);
-                globalDataLogger->setGPSTime(logTimeStr);
-            }
-            globalDataLogger->setGPSData(lat, lon, sats);
-            if (!isnan(speed)) globalDataLogger->setSpeedKmh(speed);
-
-            // 2. Display füttern
-            
-            // NEU: Satelliten an die Queue senden!
-            UiMsg msgSat;
-            msgSat.type = UiMsg::UPDATE_SATS; // Stellen Sie sicher, dass dies im Enum ist
-            msgSat.value = (float)sats;
-            globalDisplayManager->sendToQueue(msgSat);
-
-            // Geschwindigkeit (bestehend)
-            if (!isnan(speed)) {
-                UiMsg msgSpeed;
-                msgSpeed.type = UiMsg::UPDATE_SPEED;
-                msgSpeed.value = speed;
-                globalDisplayManager->sendToQueue(msgSpeed);
+            if (globalDataLogger) {
+                globalDataLogger->setGPSData(lat, lon, sats);
+                globalDataLogger->setSpeedKmh(speed);
+                if (h >= 0) {
+                    char tBuf[12];
+                    snprintf(tBuf, sizeof(tBuf), "%02d:%02d:%02d", h, m, s);
+                    globalDataLogger->setGPSTime(tBuf);
+                }
             }
 
-            // Zeit (bestehend)
-            if (hour >= 0) {
-                char timeStr[16];
-                snprintf(timeStr, sizeof(timeStr), "%02d:%02d", hour, minute);
+            UiMsg msgS;
+            msgS.type = UiMsg::UPDATE_SATS;
+            msgS.value = (float)sats;
+            globalDisplayManager->sendToQueue(msgS);
+
+            UiMsg msgSp;
+            msgSp.type = UiMsg::UPDATE_SPEED;
+            msgSp.value = speed;
+            globalDisplayManager->sendToQueue(msgSp);
+
+            if (h >= 0) {
                 UiMsg msgT;
                 msgT.type = UiMsg::UPDATE_TIME;
-                strncpy(msgT.text, timeStr, sizeof(msgT.text));
+                snprintf(msgT.text, sizeof(msgT.text), "%02d:%02d", h, m);
                 globalDisplayManager->sendToQueue(msgT);
             }
         }
@@ -268,9 +216,7 @@ void TaskManager::taskGPS(void* params) {
     }
 }
 
-// Data logger
 void TaskManager::taskDataLogger(void* params) {
-    Serial.println("Logger Task started");
     while (1) {
         if (globalDataLogger) {
             globalDataLogger->logCurrentData();
@@ -278,4 +224,3 @@ void TaskManager::taskDataLogger(void* params) {
         vTaskDelay(pdMS_TO_TICKS(LOGGER_UPDATE_INTERVAL));
     }
 }
-

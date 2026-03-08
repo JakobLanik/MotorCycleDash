@@ -3,7 +3,8 @@
 #include "config/Constants.h"
 #include <math.h>
 
-ADXL345Sensor::ADXL345Sensor() : _hspi(HSPI), _rollOffset(0.0f), _calibrated(false) {}
+//ADXL345Sensor::ADXL345Sensor() : _hspi(HSPI), _rollOffset(0.0f), _calibrated(false) {}
+ADXL345Sensor::ADXL345Sensor() : _hspi(HSPI), _rollOffset(0.0f), _pitchOffset(0.0f), _calibrated(false) {}
 
 bool ADXL345Sensor::begin() {
     pinMode(ADXL_CS, OUTPUT);
@@ -53,33 +54,30 @@ float ADXL345Sensor::calculateRollAngle() {
 
 float ADXL345Sensor::calculatePitchAngle() {
     float x, y, z;
-    readAxes(x, y, z); // Holt alle aktuellen Beschleunigungswerte
-    
-    // Berechnet den Pitch basierend auf X und der Resultierenden aus Y/Z
+    readAxes(x, y, z);
     float pitchDeg = calculatePitchDeg(x, y, z);
-    
-    // Falls du später ein Pitch-Offset (Kalibrierung) willst, 
-    // könntest du hier analog zu _rollOffset ein _pitchOffset abziehen.
-    return pitchDeg; 
+    return pitchDeg - _pitchOffset; // Offset abziehen
 }
 
 void ADXL345Sensor::calibrate() {
     const uint32_t CAL_MS = 2000;
     uint32_t tStart = millis();
     int calCount = 0;
-    double calSum = 0.0;
+    double rollSum = 0.0;
+    double pitchSum = 0.0;
     
     while (millis() - tStart < CAL_MS) {
         float x, y, z;
-        readAxes(x, y, z); // Liest aktuelle Beschleunigungswerte
-        float roll = calculateRollDeg(y, z); 
-        calSum += roll;
+        readAxes(x, y, z);
+        rollSum += calculateRollDeg(y, z);
+        pitchSum += calculatePitchDeg(x, y, z);
         calCount++;
         delay(10);
     }
     
     if (calCount > 0) {
-        _rollOffset = (float)(calSum / calCount);
+        _rollOffset = (float)(rollSum / calCount);
+        _pitchOffset = (float)(pitchSum / calCount); // Pitch ebenfalls nullen
         _calibrated = true;
     }
 }
@@ -128,26 +126,16 @@ void ADXL345Sensor::readAxesRaw(int16_t &x, int16_t &y, int16_t &z) {
 
 void ADXL345Sensor::mapAxes(int16_t rx, int16_t ry, int16_t rz, float &ax, float &ay, float &az) {
     const float s = 0.0039f; // FULL_RES ≈3.9 mg/LSB
-    ax =  rx * s;  // forward/back
-    ay = -ry * s;  // left/right (inverted for motorcycle mounting)
-    az =  rz * s;  // up/down
+    ax =  ry * s;  // forward/back
+    ay = -rx * s;  // left/right (inverted for motorcycle mounting)
+    az =  -rz * s;  // up/down
 }
 
 float ADXL345Sensor::calculateRollDeg(float ay, float az) {
-    // Schützt vor Division durch Null (atan2 fängt das zwar ab, aber sicher ist sicher)
-    if (abs(ay) < 0.001f && abs(az) < 0.001f) return 0.0f;
     return atan2f(ay, az) * 180.0f / M_PI;
 }
 
 float ADXL345Sensor::calculatePitchDeg(float ax, float ay, float az) {
-    // Die Resultierende Kraft in der Y-Z Ebene
-    float yz_resultant = sqrtf(ay * ay + az * az);
-    
-    // Schützt vor Division durch Null
-    if (abs(ax) < 0.001f && yz_resultant < 0.001f) return 0.0f;
-    
-    // atan2(-ax, Resultierende) gibt den Winkel zur Horizontalen
-    // Das Minus vor ax sorgt dafür, dass Bremsen (Verzögerung) 
-    // den Punkt im Display nach oben wandert lässt.
-    return atan2f(-ax, yz_resultant) * 180.0f / M_PI;
+    // Wir nutzen ax und az für eine saubere Vor-Zurück-Bewegung
+    return atan2f(ax, az) * 180.0f / M_PI;
 }

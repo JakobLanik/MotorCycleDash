@@ -20,6 +20,7 @@ public:
 private:
     SPIClass _hspi;
     float _rollOffset;
+    float _pitchOffset;
     bool _calibrated;
 
     // Interne Hilfsfunktionen

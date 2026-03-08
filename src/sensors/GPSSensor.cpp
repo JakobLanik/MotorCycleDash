@@ -30,9 +30,17 @@ float GPSSensor::getLongitude() {
     return _gps.location.isValid() ? (float)_gps.location.lng() : 0.0f;
 }
 
+// Ersetze diese Funktionen in deiner GPSSensor.cpp
+
 int GPSSensor::getSatellites() {
-    return _gps.satellites.value(); 
+    // Nur den Wert zurückgeben, wenn er von der Library als gültig markiert wurde
+    if (_gps.satellites.isValid()) {
+        return _gps.satellites.value();
+    }
+    return 0; // Sonst sauber 0 zurückgeben
 }
+
+
 
 void GPSSensor::getTime(int &hour, int &minute, int &second) {
     if (_gps.time.isValid()) {
