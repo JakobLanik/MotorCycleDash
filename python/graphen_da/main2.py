@@ -1,3 +1,7 @@
+'''
+KI-generiertes Script, dass die Diagramme und Graphen in der Arbeit eineitlich im Design von matplotlib dargestellt sind
+'''
+
 import matplotlib.pyplot as plt
 
 # Plot-Einstellungen (wie in deinem Script)
